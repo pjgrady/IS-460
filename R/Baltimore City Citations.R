@@ -1,4 +1,4 @@
-fileURL <- "https://uc86a9739bc21dfefad54b46ec78.dl.dropboxusercontent.com/cd/0/inline/BWMkdQ0AEPSUpXK-vv6y8kKOq6B1DzciVuC6wgYjDVjt9Frx1jQPbQgpbVSfMW3QQTigss33GuZxpRBMHrd9O45E_uA94piyi6zqlx436iWrzgiCFdfH63AGIYyUSajlmHCn8N-_pk5Q-b_hu2yTOP1W/file#"
+fileURL <- "https://uc6789e01ae2e311bbbd41e6e5fa.dl.dropboxusercontent.com/cd/0/inline/BWoL9bvZKwGq8TTnjeZceE6Ou5ps-XxmbPFPnohAkVYJDF5GyB16FKsQpyuOhzWLH3GoIikX11IXmJgMkOyTqDTevgqSIer7HzjMWsU6NE7sAgij_VLRte1i-drjX8YGrfJe12ndOt_CdzKWLXD3CIrG/file#"
 
 download.file(fileURL, "R_datafiles//Baltimore_Traffic_Citations.csv")
 
@@ -156,3 +156,85 @@ fines_df <- df %>%
   data.frame()
 
 fines_df
+
+#---------------- Stacked Bar Plot with Labels ----------------------------
+new_df
+agg_tot
+
+library(ggplot2)
+library(scales)
+library(RColorBrewer)
+library(ggthemes)
+library(plyr)
+
+str(new_df)
+new_df$year <- as.factor(new_df$year)
+
+max_y <- round_any(max(agg_tot$tot), 250000,  ceiling)
+ggplot(new_df, aes(x = reorder(Description, n, sum), y = n, fill = year)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
+  coord_flip() +
+  labs(title = "Citation Count by Citation Type", x = "", y = "Citation Count", fill = "Year") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_brewer(palette = "Paired", guide = guide_legend(reverse = TRUE)) +
+  geom_text(data = agg_tot, aes(x = Description, y = tot, label = scales::comma(tot), fill = NULL), hjust = -0.1, size = 4) +
+  scale_y_continuous(labels = comma, 
+                     breaks = seq(0, max_y, by = 250000),
+                     limits = c(0, max_y))
+
+#--------------- Dual Axis on a stacked Bar Chart --------------------------------------------------------------------------------
+
+fines_df
+other_sum <- sum(df[!df$Description %in% top_reasons, "ViolFine"])
+other_sum
+fines_df <- rbind(fines_df, c("Other", other_sum))
+fines_df
+str(fines_df)
+fines_df$totfines <- as.numeric(fines_df$totfines)
+
+ylab <- seq(0, max(fines_df$totfines)/1e6, 10)
+ylab
+my_labels <- paste0("$", ylab, "M")
+my_labels
+
+ggplot(new_df, aes( x = reorder(Description, n, sum), y = n , fill = year)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
+  coord_flip() +
+  theme_light() +
+  labs(title = "Citation Count and Total Fines", x = "", y = "Citation Count", fill = "Year") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_brewer(palette = "Spectral", guide = guide_legend(reverse = TRUE)) +
+  geom_line(inherit.aes = FALSE, data = fines_df, 
+            aes(x = Description, y = totfines/20, colour = "Total Fines", group = 1), size = 1) +
+  scale_color_manual(NULL, values = "black") + 
+  scale_y_continuous(labels = comma, 
+                     sec.axis = sec_axis(~. *20, name = "Total Fines", labels = my_labels,
+                                         breaks = ylab*10^6)) +
+  geom_point(inherit.aes = FALSE, data = fines_df, 
+             aes(x = Description, y = totfines/20, group = 1),
+                 size = 3, shape = 21, fill = "white", color = "black") +
+  theme(legend.background = element_rect(fill = "transparent"),
+        legend.box.background = element_rect(fill = "transparent", colour = NA),
+        legend.spacing = unit(-1, "lines"))
+
+#------------------ Citation Count by Hour (line plots with highlights and labels) --------------------------------
+
+library(lubridate)
+library(dplyr)
+library(scales)
+library(ggthemes)
+library(ggplot2)
+library(ggrepel)
+
+hours_df <- df %>%
+  select(ViolDate) %>%
+  mutate(hour24 = hour(mdy_hms(ViolDate))) %>%
+  group_by(hour24) %>%
+  summarise(n = length(ViolDate), .groups = 'keep') %>%
+  data.frame()
+hours_df
+  
+
+
+
