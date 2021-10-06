@@ -1,4 +1,4 @@
-fileURL <- "https://uc6789e01ae2e311bbbd41e6e5fa.dl.dropboxusercontent.com/cd/0/inline/BWoL9bvZKwGq8TTnjeZceE6Ou5ps-XxmbPFPnohAkVYJDF5GyB16FKsQpyuOhzWLH3GoIikX11IXmJgMkOyTqDTevgqSIer7HzjMWsU6NE7sAgij_VLRte1i-drjX8YGrfJe12ndOt_CdzKWLXD3CIrG/file#"
+fileURL <- "https://uc130af0baae5a3413e2077698eb.dl.dropboxusercontent.com/cd/0/inline/BXgh_O-YIvcNyoa2sfHonEKrWe9O-JxYEmb0gPvLFH2VnRncXkMXenQPPfV2uvHF8dTfz6w7XUuCI2do2iIL0GzN6dsNp51rxPJ7i30BX1fwhqTPG5uNctM76NOcPLgjoSkvsOEH4aH9dBqhkHKyBVQQ/file#"
 
 download.file(fileURL, "R_datafiles//Baltimore_Traffic_Citations.csv")
 
@@ -229,12 +229,69 @@ library(ggrepel)
 
 hours_df <- df %>%
   select(ViolDate) %>%
-  mutate(hour24 = hour(mdy_hms(ViolDate))) %>%
+  dplyr::mutate(hour24 = hour(mdy_hms(ViolDate))) %>%
   group_by(hour24) %>%
-  summarise(n = length(ViolDate), .groups = 'keep') %>%
+  dplyr::summarise(n = length(ViolDate), .groups = 'keep') %>%
   data.frame()
 hours_df
-  
+str(hours_df)  
+
+x_axis_labels = min(hours_df$hour24):max(hours_df$hour24)
+x_axis_labels
+
+hi_lo <- hours_df %>%
+  filter(n == min(n) | n == max(n)) %>%
+  data.frame()
+hi_lo
+
+ggplot(hours_df, aes(x = hour24, y = n)) + 
+  geom_line(color = 'black', size = 1) +
+  geom_point(shape=21,size=4,color='red', fill='white') +
+  labs(x="Hour", y = "Citation Count", title = "Citations by Hour", caption = "Source: Balitmore City Website: www.xyz.com") +
+  scale_y_continuous(labels = comma) +
+  theme_light() + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(labels = x_axis_labels, breaks = x_axis_labels, minor_breaks = NULL) +
+  geom_point(data = hi_lo, aes(x = hour24, y = n), shape=21, size = 4, fill= 'red', color = 'red') +
+  geom_label_repel(aes(label = ifelse(n == max(n) | n == min(n), scales::comma(n), "")), 
+                   box.padding = 1, 
+                   point.padding = 1, 
+                   size = 4, 
+                   color='Grey50', 
+                   segment.color = 'darkblue')
+
+#-------------------------- Citations by Day of the Week (line plots by year) -----------------------------------------  
+
+library(ggplot2)
+library(lubridate)  
+library(dplyr)
+library(scales)
+library(ggthemes)
+library(RColorBrewer)
+
+days_df <- df %>%
+  select(ViolDate) %>%
+  dplyr::mutate(year = year(mdy_hms(ViolDate)),
+         dayoftheweek = weekdays(mdy_hms(ViolDate), abbreviate = TRUE)) %>%
+  group_by(year, dayoftheweek) %>%
+  dplyr::summarise(n = length(ViolDate), .groups = 'keep') %>%
+  data.frame()
+days_df
+
+str(days_df)
+days_df$year <- as.factor(days_df$year)
+
+day_order <- factor(days_df$dayoftheweek, level = c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'))
+day_order
+
+ggplot(days_df, aes(x = day_order, y = n, group = year)) +
+  geom_line(aes(color = year), size = 3) +
+  labs(title = "Citations by Day and by Year", x = "Days of the Week", y = "Citation Count") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_point(shape= 21, size = 5, color = "black", fill = "white") +
+  scale_y_continuous(labels = comma) + 
+  scale_color_brewer(palette = "Paired", name = "Year", guide = guide_legend(reverse = TRUE))
 
 
 
