@@ -540,3 +540,87 @@ str(df_lat_long)
 
 
 
+# ----------------------- Mapping lat, long coordinates --------------------------------------
+
+library(leaflet)
+
+Loyola  <- c(39.3463882, -76.6210078, "College",  4000)
+Hopkins <- c(39.3297084, -76.6219169, "College", 18000)
+Alonsos <- c(39.3445304, -76.6308260, "Bar",      1000)
+
+gps_df <- data.frame(rbind(Loyola, Hopkins, Alonsos))
+gps_df
+
+colnames(gps_df) <- c("Lat", "Long", "Type", "n")
+gps_df
+
+str(gps_df)
+
+gps_df$Lat <- as.numeric(gps_df$Lat)
+gps_df$Long <- as.numeric(gps_df$Long)
+gps_df$n <- as.numeric(gps_df$n)
+
+str(gps_df)
+
+m <- leaflet() %>%
+  addTiles()
+m
+
+m <- leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng = gps_df$Long, lat = gps_df$Lat,
+             popup = paste(row.names(gps_df), gps_df$n),
+             label = row.names(gps_df))
+m
+
+icon.glyphicon <- makeAwesomeIcon(icon = 'flag', markerColor = 'blue', iconColor = 'white')
+
+m <- leaflet() %>%
+  addTiles() %>%
+  addAwesomeMarkers(lng = gps_df$Long, lat = gps_df$Lat,
+                    icon = icon.glyphicon,
+                    popup = paste(row.names(gps_df), gps_df$n),
+                    label = row.names(gps_df))
+m
+
+m <- leaflet() %>%
+  addProviderTiles(providers$Wikimedia) %>%
+  setView(lng = -76.6308260, lat = 39.3445304, zoom = 12)
+m
+
+m <- leaflet() %>%
+  addProviderTiles(providers$Wikimedia) %>%
+  setView(lng = -76.6308260, lat = 39.3445304, zoom = 12) %>%
+  addCircles(
+    lng = subset(gps_df, Type == 'College')$Long,
+    lat = subset(gps_df, Type == 'College')$Lat,
+    opacity = 10,
+    color = "red",
+    popup = paste(row.names(subset(gps_df, Type == 'College')), subset(gps_df, Type == 'College') $n),
+    radius = sqrt(subset(gps_df, Type == 'College')$n)
+  )
+m
+
+m <- leaflet() %>%
+  addProviderTiles(providers$Wikimedia) %>%
+  setView(lng = -76.6308260, lat = 39.3445304, zoom = 12) %>%
+  addCircles(
+    lng = subset(gps_df, Type == 'College')$Long,
+    lat = subset(gps_df, Type == 'College')$Lat,
+    opacity = 10,
+    color = "red",
+    popup = paste(row.names(subset(gps_df, Type == 'College')), subset(gps_df, Type == 'College') $n),
+    radius = sqrt(subset(gps_df, Type == 'College')$n) 
+  ) %>%
+  addCircles(
+    lng = subset(gps_df, Type == 'Bar')$Long,
+    lat = subset(gps_df, Type == 'Bar')$Lat,
+    opacity = 10,
+    color = "blue",
+    popup = paste(row.names(subset(gps_df, Type == 'Bar')), subset(gps_df, Type == 'Bar') $n),
+    radius = 40 
+  )
+m
+
+htmlwidgets::saveWidget(m, "BaltimoreMap.html")
+
