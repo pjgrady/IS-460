@@ -1,0 +1,145 @@
+---
+title: "Example of Flex Dashboard in R"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(scales)
+library(RColorBrewer)
+library(ggthemes)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(plotly)
+library(cowplot)
+
+#Change setwd and the filename below to be consistent with your directory preferences
+setwd("/Users/paulgrady/Documents/GitHub/IS-460/R")
+
+library(data.table)
+filename <- "R_datafiles//Baltimore_Traffic_Citations.csv"
+df <- fread(filename, na.strings=c(NA, ""))
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Citation Count by Citation Type
+
+```{r}
+df_reasons <- count(df, Description)
+df_reasons <- df_reasons[order(df_reasons$n, decreasing = TRUE),]
+
+top_reasons <- df_reasons$Description[1:10]
+
+new_df <- df %>%
+  filter(Description %in% top_reasons) %>%
+  select(ViolDate, Description) %>%
+  mutate(year = year(mdy_hms(ViolDate))) %>%
+  group_by(Description, year) %>%
+  summarise(n = length(Description), .groups = 'keep') %>%
+  data.frame()
+
+other_df <- df %>%
+  filter(!Description %in% top_reasons) %>%
+  select(ViolDate) %>%
+  mutate(year = year(mdy_hms(ViolDate)), Description = "Other") %>%
+  group_by(Description, year) %>%
+  summarise(n = length(Description), .groups = 'keep') %>%
+  data.frame()
+
+new_df <- rbind(new_df, other_df)
+
+agg_tot <- new_df %>%
+  select(Description, n) %>%
+  group_by(Description) %>%
+  summarise(tot = sum(n), .groups = 'keep') %>%
+  data.frame()
+
+fines_df <- df %>%
+  filter(Description %in% top_reasons) %>%
+  select(Description, ViolFine) %>%
+  group_by(Description, .groups='keep') %>%
+  summarise(totfines = sum(ViolFine), .groups='keep') %>%
+  data.frame()
+
+new_df$year <- as.factor(new_df$year)
+
+max_y <- round_any(max(agg_tot$tot), 250000, ceiling)
+y_labels <- c("0",paste0(seq(250, max_y/1000, by=250),"K"))
+ggplot(new_df, aes(x = reorder(Description, n, sum), y = n, fill = year)) +
+  geom_bar(stat="identity", position = position_stack(reverse = TRUE)) +
+  coord_flip() +
+  labs(x = "", y = "Citation Count (Thousands)", fill = "Year") +
+  theme_light() +
+  scale_fill_brewer(palette="Paired", guide = guide_legend(reverse = TRUE)) +
+  geom_text(data = agg_tot, aes(x = Description, y = tot, label = scales::comma(tot), fill = NULL), hjust = -0.1, size=2) +
+  scale_y_continuous(labels = y_labels,
+                     breaks = seq(0, max_y, by = 250000),
+                     limits=c(0, max_y))+
+  theme(axis.text.x = element_text(face = "bold", size = 6) ) 
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Citations by State of Vehicle Registration (2013-2020)
+
+```{r}
+state_df <- df %>%
+  select(State, ViolDate) %>%
+  mutate(myState = ifelse(State=="MD", "MD", ifelse(State=="VA","VA","Other"))) %>%
+  group_by(myState) %>%
+  summarise(n=length(myState), .groups='keep') %>%
+  data.frame()
+state_df$percent_of_total <- round(100*state_df$n/sum(state_df$n),1)
+
+state_df$myState <- factor(state_df$myState, levels=c("MD", "VA", "Other"))
+
+ggplot(data = state_df, aes(x="", y = n, fill = myState)) +
+  geom_bar(stat="identity", position="fill") +
+  coord_polar(theta="y", start=0) +
+  labs(fill = "States", x = NULL, y = NULL) +
+  theme_light() +
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank()) +
+  scale_fill_brewer(palette = "Reds") +
+  geom_text(aes(x=1.7, label=paste0(percent_of_total,"%")),
+            size=4,
+            position=position_fill(vjust = 0.5))  
+
+```
+
+### Citations by Day and by Year
+
+```{r}
+days_df <- df %>%
+  select(ViolDate) %>%
+  mutate(year = year(mdy_hms(ViolDate)),
+         dayoftheweek = weekdays(mdy_hms(ViolDate), abbreviate = TRUE)) %>%
+  group_by(year, dayoftheweek) %>%
+  dplyr::summarise(n = length(ViolDate), .groups='keep') %>%
+  data.frame()
+
+days_df$year <- as.factor(days_df$year)
+
+day_order <- factor(days_df$dayoftheweek, level=c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'))
+
+ggplot(days_df, aes(x = day_order, y = n, group=year)) +
+  geom_line(aes(color=year), size=3) +
+  labs(x = "Days of the Week", y = "Citation Count") +
+  theme_light() +
+  theme(plot.title = element_text(hjust=0.5)) +
+  geom_point(shape=21, size=5, color="black", fill="white") +
+  scale_y_continuous(labels=comma) +
+  scale_color_brewer(palette = "Paired", name = "Year", guide = guide_legend(reverse=TRUE))
+```

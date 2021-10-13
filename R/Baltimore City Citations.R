@@ -1,4 +1,4 @@
-fileURL <- "https://uc130af0baae5a3413e2077698eb.dl.dropboxusercontent.com/cd/0/inline/BXgh_O-YIvcNyoa2sfHonEKrWe9O-JxYEmb0gPvLFH2VnRncXkMXenQPPfV2uvHF8dTfz6w7XUuCI2do2iIL0GzN6dsNp51rxPJ7i30BX1fwhqTPG5uNctM76NOcPLgjoSkvsOEH4aH9dBqhkHKyBVQQ/file#"
+fileURL <- "https://ucc169b6bbeb629e7eb2399d23a3.dl.dropboxusercontent.com/cd/0/inline/BX5frTAQ8D1TFiyB9y7Txl1Og_r9_yPlE8uoub7wXhdLZpkL7_SIKEP37q6F_Wk900_fnvYDIjh8lEiigLoL7BCg2xYV4P3hxWq1CUr92zVN5m5KLeyqG4QthVG39FLBkLfHTTTc9z65G7x-Nn9AXw3y/file#"
 
 download.file(fileURL, "R_datafiles//Baltimore_Traffic_Citations.csv")
 
@@ -91,12 +91,12 @@ df$year <- year(mdy_hms(df$ViolDate))
 length(unique(df$year))
 
 library(scales)
-p1 <- ggplot(df, aes(x=year)) +
+p <- ggplot(df, aes(x=year)) +
   geom_histogram(bins = 8, color= "darkblue", fill = "lightblue") +
   labs(title = "Historgram of Citation by Year", x = "Year", y = "Count of Citations") +
   scale_y_continuous(labels = comma)+
   stat_bin(binwidth = 1, geom='text', color ='black', aes(label = scales::comma(..count..)), vjust=-0.5)
-p1
+p
 
 x_axis_labels <- min(df$year) : max(df$year)
 
@@ -171,7 +171,7 @@ str(new_df)
 new_df$year <- as.factor(new_df$year)
 
 max_y <- round_any(max(agg_tot$tot), 250000,  ceiling)
-ggplot(new_df, aes(x = reorder(Description, n, sum), y = n, fill = year)) +
+p3 <- ggplot(new_df, aes(x = reorder(Description, n, sum), y = n, fill = year)) +
   geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
   coord_flip() +
   labs(title = "Citation Count by Citation Type", x = "", y = "Citation Count", fill = "Year") +
@@ -182,7 +182,7 @@ ggplot(new_df, aes(x = reorder(Description, n, sum), y = n, fill = year)) +
   scale_y_continuous(labels = comma, 
                      breaks = seq(0, max_y, by = 250000),
                      limits = c(0, max_y))
-
+p3
 #--------------- Dual Axis on a stacked Bar Chart --------------------------------------------------------------------------------
 
 fines_df
@@ -244,7 +244,7 @@ hi_lo <- hours_df %>%
   data.frame()
 hi_lo
 
-ggplot(hours_df, aes(x = hour24, y = n)) + 
+p1 <- ggplot(hours_df, aes(x = hour24, y = n)) + 
   geom_line(color = 'black', size = 1) +
   geom_point(shape=21,size=4,color='red', fill='white') +
   labs(x="Hour", y = "Citation Count", title = "Citations by Hour", caption = "Source: Balitmore City Website: www.xyz.com") +
@@ -259,7 +259,7 @@ ggplot(hours_df, aes(x = hour24, y = n)) +
                    size = 4, 
                    color='Grey50', 
                    segment.color = 'darkblue')
-
+p1
 #-------------------------- Citations by Day of the Week (line plots by year) -----------------------------------------  
 
 library(ggplot2)
@@ -284,7 +284,7 @@ days_df$year <- as.factor(days_df$year)
 day_order <- factor(days_df$dayoftheweek, level = c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'))
 day_order
 
-ggplot(days_df, aes(x = day_order, y = n, group = year)) +
+p2 <- ggplot(days_df, aes(x = day_order, y = n, group = year)) +
   geom_line(aes(color = year), size = 3) +
   labs(title = "Citations by Day and by Year", x = "Days of the Week", y = "Citation Count") +
   theme_light() +
@@ -292,6 +292,251 @@ ggplot(days_df, aes(x = day_order, y = n, group = year)) +
   geom_point(shape= 21, size = 5, color = "black", fill = "white") +
   scale_y_continuous(labels = comma) + 
   scale_color_brewer(palette = "Paired", name = "Year", guide = guide_legend(reverse = TRUE))
+p2
+# -------------------- Citations by Month(multiple bar plots) -------------------------------
+
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(scales)
+library(ggthemes)
+library(RColorBrewer)
+
+months_df <- df %>%
+  select(ViolDate) %>%
+  dplyr::mutate(months = months(mdy_hms(ViolDate), abbreviate = TRUE), 
+         year = year(mdy_hms(ViolDate))) %>%
+  group_by(year, months) %>%
+  dplyr::summarise(n = length(ViolDate), .groups = 'keep') %>%
+  data.frame()
+months_df
+
+str(months_df)
+months_df$year <- factor(months_df$year)
+
+mymonths <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+month_order <- factor(months_df$months, level = mymonths)
+
+x = min(as.numeric(levels(months_df$year)))
+x
+y = max(as.numeric(levels(months_df$year)))
+y
+
+months_df$year <- factor(months_df$year, levels = seq(y, x, by = -1))
+
+ggplot(months_df, aes(x = month_order, y = n, fill = year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Multiple Bar Charts - Total Citations by Month by Year",
+       x = "Months of the Year",
+       y = "Citation Count",
+       fill = "Year") +
+  scale_fill_brewer(palette = "Set2") +
+  facet_wrap(~year, ncol = 4, nrow = 2)
+
+
+# --------------------- Pie Charts showing Citations by State ---------------------------
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(ggthemes)
+
+length(unique(df$State))
+top_states <- dplyr::count(df, State)
+top_states <- top_states[order(-n),]
+top_states
+
+top_states[top_states$State %in% c("MD", "VA"),"n"] / sum(top_states$n)
+
+state_df <- df %>%
+  select(State, ViolDate) %>%
+  dplyr::mutate(year = year(mdy_hms(ViolDate)),
+                myState = ifelse(State == "MD", "MD", ifelse(State == "VA", "VA", "Other"))) %>%
+  group_by(year, myState) %>%
+  dplyr::summarise(n = length(myState), .groups = "keep") %>%
+  group_by(year) %>%
+  dplyr::mutate(percent_of_total = round(100 * n/sum(n),1)) %>%
+  ungroup() %>%
+  data.frame()
+state_df
+
+state_df[state_df$year == 2013,]
+
+str(state_df)
+
+state_df$myState = factor(state_df$myState, levels = c("MD", "VA", "Other"))
+ggplot(data = state_df, aes(x = "", y = n, fill = myState)) +
+  geom_bar(stat = "identity", position = "fill") +
+  coord_polar(theta = "y", start = 0) + 
+  labs(fill = "States", x = NULL, y = NULL, 
+       title = "Citation Count by Year and by State",
+       caption = "Slices under 5% are not labeled") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank()) +
+  facet_wrap(~year, ncol = 3, nrow = 3) +
+  scale_fill_brewer(palette = "Reds") +
+  geom_text(aes(x = 1.7, label = ifelse(percent_of_total>5,paste0(percent_of_total, "%"), "")),
+            size = 4, 
+            position = position_fill(vjust = 0.5))
+
+# ------------------------------    Pie Charts Using Plotly   ------------------------------------------------------  
+
+library(plotly)
+
+state_df
+
+plot_ly(state_df, labels = ~myState, values = ~n, type = "pie",
+        textposition = "outside", textinfo = "label + percent") %>%
+  layout(title = "Citations by State of Vehicle Registration (2013-2020)")
+
+state_df %>%
+  plot_ly(., labels = ~myState, values = ~n, type = "pie",
+          textposition = "outside", textinfo = "label + percent") %>%
+  layout(title = "Citations by State of Vehicle Registration (2013-2020)")
+
+plot_ly(state_df[state_df$year == 2013,], labels = ~myState, values = ~n, type = "pie",
+        textposition = "outside", textinfo = "label + percent") %>%
+  layout(title = "Citations by State of Vehicle Registration (2013)")  
+
+plot_ly(state_df, labels = ~myState, values = ~n) %>%
+  add_pie(hole = 0.6) %>%
+  layout(title = "Citations by State of Vehicle Registration (2013-2020)") %>%
+  layout(annotations = list(text = paste0("Total Citation Count: \n", 
+                            scales::comma(sum(state_df$n))),
+                            "showarrow" = F))
+
+# ------------------------- Nested Pie Charts Using Plotly ------------------------------------
+
+library(plotly)
+
+fig <- plot_ly(hole = 0.7) %>%
+  layout(title = "Traffic Citations (2013-2015)") %>%
+  add_trace(data = state_df[state_df$year == 2015,],
+            labels = ~myState, 
+            values = ~state_df[state_df$year == 2015, "n"],
+            type = "pie",
+            textposition = "inside",
+            hovertemplate = "Year: 2015<br>State:%{label}<br>Percent:%{percent}<br>Citation Count: %{value}<extra></extra>") %>%
+  add_trace(data = state_df[state_df$year == 2014,],
+            labels = ~myState, 
+            values = ~state_df[state_df$year == 2014, "n"],
+            type = "pie",
+            textposition = "inside",
+            hovertemplate = "Year: 2014<br>State:%{label}<br>Percent:%{percent}<br>Citation Count: %{value}<extra></extra>",
+            domain = list(
+              x = c(0.16, 0.84),
+              y = c(0.16, 0.84))) %>%
+  add_trace(data = state_df[state_df$year == 2013,],
+            labels = ~myState, 
+            values = ~state_df[state_df$year == 2013, "n"],
+            type = "pie",
+            textposition = "inside",
+            hovertemplate = "Year: 2013<br>State:%{label}<br>Percent:%{percent}<br>Citation Count: %{value}<extra></extra>",
+            domain = list(
+              x = c(0.27, 0.73),
+              y = c(0.27, 0.73)))
+
+fig
+
+htmlwidgets::saveWidget(fig, "Nested Pie Chart (2013-2015).html")  
+
+# ---------------------------- Trellis chart in Plotly using Annual Pie Charts ----------------------------------
+
+library(plotly)
+
+fig1 <- plot_ly(textposition = "inside",labels = ~myState, values = ~n) %>%
+  add_pie(data = state_df[state_df == 2013,],
+          name = "2013", title = "2013", domain = list(row = 0, column = 0)) %>%
+  add_pie(data = state_df[state_df == 2014,],
+          name = "2014", title = "2014", domain = list(row = 0, column = 1)) %>%
+  add_pie(data = state_df[state_df == 2015,],
+          name = "2015", title = "2015", domain = list(row = 1, column = 0)) %>%
+  add_pie(data = state_df[state_df == 2016,],
+          name = "2016", title = "2016", domain = list(row = 1, column = 1)) %>%
+  layout(title = "Trellis Chart: Citation Count by Year", showlegend = TRUE,
+         grid = list(rows = 2, columns = 2))
+
+htmlwidgets::saveWidget(fig1, "Trellis Chart in Plotly (2013-2016).html")
+
+# --------------------- HeatMaps -----------------------------------
+
+days_df
+str(days_df)
+
+mylevels <- c('Mon','Tue','Wed','Thu', 'Fri', 'Sat', 'Sun')
+days_df$dayoftheweek <- factor(days_df$dayoftheweek, levels = mylevels)
+
+breaks <- c(seq(0, max(days_df$n), by = 25000))
+breaks
+g <- ggplot(days_df, aes(x = year, y = dayoftheweek, fill = n)) +
+  geom_tile(color = "black") +
+  geom_text(aes(label = comma(n))) +
+  coord_equal(ratio = 1) +
+  labs(title = "Heatmap: Citations by Day of the Week",
+       x = "Year",
+       y = "Days of the Week",
+       fill = "Citation Count") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_discrete(limits = rev(levels(days_df$dayoftheweek))) +
+  scale_fill_continuous(low = "white", high = "red", breaks = breaks) +
+  guides(fill = guide_legend(reverse = TRUE, override.aes = list(colour = "black")))
+
+
+g
+p4 <- g
+library(plotly)
+
+gg <- ggplotly(g, tooltip = c("n", "year", "dayoftheweek")) %>%
+  style(hoverlabel = list(bgcolor = "white"))
+
+
+htmlwidgets::saveWidget(gg, "Heatmaps in Plotly (Citations by Day of the Week).html")
+
+# ------------------------------ Dashboards ---------------------------------------------------
+
+p1
+p2
+p3
+p4
+
+library(cowplot)
+plot_grid(p1, p2, p3, p4, nrow = 2)
+
+library(ggpubr)
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2)
+
+library(flexdashboard)
+
+# -------------------------- String Manipulation (lat, long) -----------------------------------
+
+library(stringr)
+library(tidyr)
+
+c1 <- '   (31.1  ,      -21.1)'
+c2 <- '(     27.6,   -11.1)'
+c3 <- '(99.9, -41.1)'
+
+df_lat_long <- data.frame(my_col = c(c1,c2,c3))
+df_lat_long
+
+df_lat_long <- separate(df_lat_long, my_col, c("lat", "long"), sep = ",", remove = TRUE)
+df_lat_long
+
+df_lat_long$long <- trimws(df_lat_long$long, which = "both")
+df_lat_long$lat <- trimws(df_lat_long$lat, which = "both")
+df_lat_long
+
+df_lat_long$lat <- as.numeric(substring(df_lat_long$lat, 2,))
+df_lat_long
+df_lat_long$long <- as.numeric(substring(df_lat_long$long, 1, nchar(df_lat_long$long)-1))
+df_lat_long
+str(df_lat_long)
 
 
 
