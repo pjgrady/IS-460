@@ -1,4 +1,4 @@
-fileURL <- "https://ucc169b6bbeb629e7eb2399d23a3.dl.dropboxusercontent.com/cd/0/inline/BX5frTAQ8D1TFiyB9y7Txl1Og_r9_yPlE8uoub7wXhdLZpkL7_SIKEP37q6F_Wk900_fnvYDIjh8lEiigLoL7BCg2xYV4P3hxWq1CUr92zVN5m5KLeyqG4QthVG39FLBkLfHTTTc9z65G7x-Nn9AXw3y/file#"
+fileURL <- "https://uc24b712e31e45f1ef2843e7d460.dl.dropboxusercontent.com/cd/0/inline/BYGoZ9m9-ZOzV3_QaycsZq3WSQ-EGfoBzkS3Z6x3Yk0F3VM9yklqxNv41uodJtYIa-twvsFGLNZROWMeAfa3wNA-QwHw88AhxandnY4vnwlzdym7sqwXcpNw7KInMXRSgIGz5Ji431Ni-1V8Jr6ywCJ7/file#"
 
 download.file(fileURL, "R_datafiles//Baltimore_Traffic_Citations.csv")
 
@@ -22,8 +22,8 @@ unique(na.omit(df$Tag))
 length(unique(na.omit(df$Tag)))
 
 library(dplyr)
-count(df, Tag)
-carcount <- data.frame(count(df, Tag))
+dplyr::count(df, Tag)
+carcount <- data.frame(dplyr::count(df, Tag))
 carcount 
 carcount <- carcount[order(carcount$n, decreasing = TRUE), ]
 carcount
@@ -31,7 +31,7 @@ carcount
 df$Tag %in% c(NA, "NO TAGST", "NOTAGS T")
 top3 <- df[df$Tag %in% c(NA, "NO TAGST", "NOTAGS T") ,"Description"]
 top3
-df_top3 <- count(top3, Description)
+df_top3 <- dplyr::count(top3, Description)
 df_top3 <- df_top3[order(df_top3$n, decreasing = TRUE),]
 df_top3
 
@@ -100,13 +100,13 @@ p
 
 x_axis_labels <- min(df$year) : max(df$year)
 
-p1 <- p1 + scale_x_continuous(labels = x_axis_labels, breaks = x_axis_labels)
-p1
+p <- p + scale_x_continuous(labels = x_axis_labels, breaks = x_axis_labels)
+p
 
 
 #------------------Data set up for stacked bar charts-------------------------
 
-df_reasons <- count(df, Description)
+df_reasons <- dplyr::count(df, Description)
 head(df_reasons)
 df_reasons <- df_reasons[order(df_reasons$n, decreasing = TRUE),]
 
@@ -623,4 +623,7 @@ m <- leaflet() %>%
 m
 
 htmlwidgets::saveWidget(m, "BaltimoreMap.html")
+
+# -------------------------- Markdown ---------------------------
+
 
