@@ -1,0 +1,171 @@
+---
+title: "Covid Statistics"
+author: "P. Grady"
+date: "10/15/2021"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    theme: united
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(lubridate)
+library(scales)
+library(ggthemes)
+library(ggplot2)
+library(ggrepel)
+library(plyr)
+library(dplyr)
+library(plotly)
+library(flexdashboard)
+
+df <- fread("R_datafiles//Covid Data - World.csv", na.strings=c(NA, ""))
+
+#Narrow down top 10 countries based on total cases
+top10C <- df[with(df,order(-'Total Cases')),]
+top10C <- df[1:10,]
+
+# Make Values in Dataset usable (all are listed as chr, need to be either factor or number)
+top10C$`Country, Other` <- as.factor(top10C$`Country, Other`)
+top10C$`Total Cases` <- as.numeric(gsub(",","",top10C$`Total Cases`))
+top10C$`Total Deaths` <- as.numeric(gsub(",","",top10C$`Total Deaths`))
+top10C$Population <- as.numeric(gsub(",","", top10C$Population))
+top10C$`Deaths / 1M Population` <- as.numeric(gsub(",","", top10C$`Deaths / 1M Population`))
+top10C$`Active Cases` <- as.numeric(gsub(",","", top10C$`Active Cases`))
+top10C$`Total Recovered` <- as.numeric(gsub(",","", top10C$`Total Recovered`))
+top10C$`Total Tests` <- as.numeric(gsub(",","", top10C$`Total Tests`))
+top10C$`Serious / Critical Condition` <- as.numeric(gsub(",","", top10C$`Serious / Critical Condition`))
+```
+## Introduction
+We are living in one of the most globally important times in recent memory, due solely to the Global pandemic of COVID-19. I wanted to see the statistics of what is going on in other countries, at least what they report out, and make inferences on the response the country based solely on the statistics.
+
+## Dataset
+### Original Dataset
+This is the original dataset, which contains information about 224 different countries Covid statistics including: Total Cases, Deaths, Recovered Cases, etc. You can view where it came from here: <a href="https://www.kaggle.com/iamsouravbanerjee/covid19-dataset-world-and-continent-wise?select=Covid+Data+-+World.csv">COVID DataSet</a>
+
+```{r warning = FALSE}
+summary(df)
+```
+
+### New Dataset
+Because the original dataset is so large, it made making useful visualizations difficult, therefore I decided to make it so we only see the Top Ten countries in terms of Total Cases, that being: USA, India, Brazil, UK, Russia, France, Turkey, Iran, Argentina and Colombia
+```{r warning = FALSE}
+summary(top10C)
+```
+
+## Findings {.tabset .tabset-fade .tabset-pills}
+I wanted to analyze the Top Ten countries to see the way that COVID has effected them by as well as their responses to them, and what we can infer from there. The biggest limitation in doing so is that the Data only contained one categorical variable being the Country name, which made it impossible to do a wide variety of different graphs, with bar and pie charts being the only real options.
+
+### Tab 1
+This first graph shows the Top Ten countries and how many cases they had. From what we can see its obvious that the USA, India as well as Brazil, see far more cases than all the other countries. Some of that can be assumed to be because they are also the three highest countries in Population.
+``` {r warning = FALSE}
+max_y <- round_any(max(top10C$`Total Cases`), 50000000, ceiling)
+
+fig <-ggplot(top10C, aes(x = reorder(top10C$`Country, Other`, `Total Cases`, sum), y = `Total Cases`)) +
+  geom_bar(stat = "identity", color = "black", fill = "darkblue") +
+  coord_flip() +
+  labs(title = "Total Covid Cases by Country(Top 10)", x = "Country", y = "Total Cases") + 
+  theme_grey() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(label = scales::comma(`Total Cases`)), hjust =-0.1, size = 4) +
+  scale_y_continuous(labels = comma, breaks = seq(0, max_y, by = 10000000), limits = c(0, max_y)) 
+fig
+
+```
+
+This second Graph shows the total amount of tests each of those Top Ten countries have given. What is interesting about this is, that while the USA and India are still first and second as far as number of tests, Brazil who has the third highest number of cases, is only the seventh highest in terms of testing. This could mean that their total cases could be even higher, as they aren't testing nearly as aggressively or numerously as their peers. It could also mean that the other countries who have less cases but more tests, could be over testing.
+``` {r warning = FALSE}
+max_y <- round_any(max(top10C$`Total Tests`), 700000000, ceiling)
+
+fig4 <-ggplot(top10C, aes(x = reorder(top10C$`Country, Other`, `Total Cases`, sum), y = `Total Tests`)) +
+  geom_bar(stat = "identity", color = "black", fill = "darkgreen") +
+  labs(title = "Total Covid Tests by Country(Top 10)", x = "Country", y = "Total Tests") + 
+  theme_grey() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(label = scales::comma(`Total Tests`)), vjust =-0.5, size = 4) +
+  scale_y_continuous(labels = comma, breaks = seq(0, max_y, by = 100000000), limits = c(0, max_y))
+fig4
+
+
+```
+
+### Tab 2
+This Pie Chart shows the Deaths per 1M people of that countries population. As we can see that two of the highest in terms of this percentage are Colombia and Argentina, even though they are at the bottom of the amount of cases in the Top Ten. This is due to the fact that thought they aren't losing people at the same rate as other countries, those countries have a significantly higher population, meaning that they are losing less of their overall population. 
+
+The most interesting is Brazil however. This is because they are at the top of this list despite being third in cases, meaning they are losing significant quantities of their population as opposed to India who is losing a small fraction of their total population.
+
+``` {r warning = FALSE}
+USdf <- top10C[1,]
+Idf <- top10C[2,]
+
+fig1 <- plot_ly() %>%
+  layout(title = "Deaths/1M of Top 10 Countries in Total cases of COVID") %>%
+  add_trace(
+    data = top10C,
+    labels = ~`Country, Other`,
+    values = ~`Deaths / 1M Population`,
+    type = "pie",
+    textposition = "outside",
+    hovertemplate = "Country: %{label}<br>Percent:%{percent}<br>Deaths/1M: %{value}<extra></extra>"
+  )
+fig1
+```
+
+### Tab 3
+This is the most interesting and important of the Dataset. These two pie charts show the differences between the two countries with the highest number of cases: the US and India. The charts consist of Recoveries, Active Cases and Deaths, and also show the Total Population, Total Cases and Total Tests for context.
+
+The First is for the USA. We can see that over 75% of people ended up recovering, while 22% are active, and another ~2% have died. These are numbers that are to be expected as we can see that they test about twice as much as their population, which leads to the thought that they are actively testing people to be able to diagnose them with COVID-19.
+
+
+``` {r warning = FALSE}
+fig2 <- plot_ly(hole = 0.4) %>%
+  layout(title = "USA Statistics") %>%
+  layout(annotations = list(text = paste0("TotalCases: \n",
+                                          scales::comma(USdf$`Total Cases`),"\n","\n", 
+                                          "Population: \n",
+                                          scales::comma(USdf$Population),"\n","\n",
+                                          "Total Tests: \n",
+                                          scales::comma(USdf$`Total Tests`)),
+                                          "showarrow" = F)) %>%
+  add_trace(
+    data = USdf,
+    values = c(USdf$`Active Cases`,USdf$`Total Recovered`,USdf$`Total Deaths`),
+    labels = c("Active Cases", "Recovered","Deaths"),
+    type = "pie",
+    textposition = "inside",
+    hovertemplate = "Country: USA<br>%{label}<br>Percent: %{percent}<br>Total: %{value}<extra></extra>"
+  )
+fig2
+```
+
+The second is far more interesting, as if you don't have the context of their population and testing, it would seem as though India is doing an incredible job when it comes to getting and keeping their population safe. However, when you have that context, you see that it isn't all that it appears to be. India is one of the most populated countries in the world at ~1.4 billion people. Despite that they only have 547M tests, a bit over a third of their total population. What this says to me is that they either aren't testing people as much as they should be, or they aren't reporting those tests to keep their numbers looking so good, so as to maintain an image.
+
+``` {r warning = FALSE}
+fig3 <- plot_ly(hole = 0.4) %>%
+  layout(title = "India Statistics") %>%
+  layout(annotations = list(text = paste0("TotalCases: \n",
+                                          scales::comma(Idf$`Total Cases`),"\n","\n", 
+                                          "Population: \n",
+                                          scales::comma(Idf$Population),"\n","\n",
+                                          "Total Tests: \n",
+                                          scales::comma(Idf$`Total Tests`)),
+                            "showarrow" = F)) %>%
+  add_trace(
+    data = Idf,
+    values = c(Idf$`Active Cases`,Idf$`Total Recovered`,Idf$`Total Deaths`),
+    labels = c("Active Cases", "Recovered","Deaths"),
+    type = "pie",
+    textposition = "inside",
+    hovertemplate = "Country: India<br>%{label}<br>Percent: %{percent}<br>Total: %{value}<extra></extra>"
+  )
+fig3
+```
+
+
+## Conclusion {.unlisted .unnumbered}
+In conclusion there is a lot we can learn from this dataset. It can give us the means in which to learn how countries have responded to the pandemic, tottaly without any societal influence. There are many things that the data set lacks however, that I believe could make it much more informative. Namely information regarding Vaccines. I think it is interesting we can now take this theoretically unbiased data, and see the bias and or limitations it has. We have no real way of knowing exactly how the data was collected, meaning we don't know who is the one that isn't being forthcoming with some things, like the case we discussed with India. 
